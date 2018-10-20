@@ -1,0 +1,16 @@
+{
+  "name": "webtask-demo",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "scripts": {
+    "deploy": "wt create index --bundle --secret GITHUB_ACCESS_TOKEN=%GITHUB_ACCESS_TOKEN%"
+  },
+  "dependencies": {
+    "body-parser": "^1.18.3",
+    "es6-promise": "^4.2.5",
+    "express": "^4.16.4",
+    "isomorphic-fetch": "^2.2.1",
+    "webtask-tools": "^3.4.0"
+  }
+}

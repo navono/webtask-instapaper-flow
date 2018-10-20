@@ -1,0 +1,86 @@
+require('es6-promise').polyfill()
+require('isomorphic-fetch')
+
+const REPO_OWNER = 'navono';
+const REPO_NAME = 'navono.github.io';
+
+
+module.exports = (app) => {
+  app.get('/reading', (req, res) => {
+    const { GITHUB_ACCESS_TOKEN } = req.webtaskContext.secrets
+
+    console.info('[BEGIN]', req.query)
+    const title = req.query.title
+
+    let keyword = encodeURIComponent(title.replace(/\s/g, '+'))
+    console.info('[KEYWORD]', keyword)
+
+    fetch(`https://api.github.com/search/issues?q=${keyword}%20repo:${REPO_OWNER}/${REPO_NAME}`)
+      .then(response => response.json())
+      .then(data => {
+        console.info('[RESULT]', data)
+        if (data.total_count > 0) {
+          data.items.forEach(({ url, html_url }) =>
+            fetch(`${url}?access_token=${GITHUB_ACCESS_TOKEN}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ state: 'closed' }),
+            })
+              .then(() => console.info(`[END] issue closed successful! ${html_url}`))
+              .catch(err => res.json('error', { error: err })))
+          res.json({ message: 'Closed issue successful!' })
+        } else {
+          console.info('[RESULT]', data)
+
+          fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/issues?access_token=${GITHUB_ACCESS_TOKEN}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title }),
+          })
+            .then(response => response.json())
+            .then(({ url, html_url }) => {
+              console.info(`[END] issue created successful! ${html_url}`)
+              fetch(`${url}?access_token=${GITHUB_ACCESS_TOKEN}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ state: 'closed' }),
+              })
+                .then(() => console.info(`[END] issue closed successful! ${html_url}`))
+                .catch(err => res.json('error', { error: err }))
+            })
+            .catch(err => res.json('error', { error: err }))
+        }
+        res.json({ error: 'Finished achieve reading item!' })
+      })
+      .catch(err => res.json('error', { error: err }))
+  }),
+  app.post('/reading-note', (req, res) => {
+    const { GITHUB_ACCESS_TOKEN } = req.webtaskContext.secrets
+
+    const title = req.query.title
+    const note = req.body.note
+    console.info('[BEGIN]', { title, note })
+
+    let keyword = encodeURIComponent(title.replace(/\s/g, '+'))
+    console.info('[KEYWORD]', keyword)
+
+    fetch(`https://api.github.com/search/issues?q=${keyword}%20repo:${REPO_OWNER}/${REPO_NAME}%20is:open`)
+      .then(response => response.json())
+      .then(data => {
+        console.info('[RESULT]', data)
+        if (data.total_count > 0) {
+          data.items.forEach(({ url, html_url }) =>
+            fetch(`${url}/comments?access_token=${GITHUB_ACCESS_TOKEN}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ body: `> ${note}` }),
+            })
+              .then(() => console.info(`[END] added comment successful! ${html_url}`))
+              .catch(err => res.json('error', { error: err })))
+          res.json({ message: 'Added comment into issue successful!' })
+        }
+        res.json({ error: 'Not Found!' })
+      })
+      .catch(err => res.json('error', { error: err }))
+  })
+};
