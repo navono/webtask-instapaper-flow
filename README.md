@@ -1,4 +1,4 @@
-# ifttt-webtask-github
+# ifttt-instapaper-flow
 文章阅读流。
 
 # 原理
